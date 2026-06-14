@@ -1,0 +1,4 @@
+# Streamlit Cloud reads this at the repo root. Raises the file-upload cap to 500 MB
+# (default is 200 MB) so larger candidate samples can be uploaded to the sandbox.
+[server]
+maxUploadSize = 500
