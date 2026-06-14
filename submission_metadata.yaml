@@ -1,0 +1,81 @@
+# Redrob Hackathon — Submission Metadata (EvidenceRank)
+# Mirrors the portal metadata. Fill the <<...>> placeholders with your team's real details
+# before submitting; the rest is filled in truthfully for this codebase.
+
+# ============================================================================
+# Team identity   <<< FILL THESE IN >>>
+# ============================================================================
+team_name: "<<your-registered-team-name>>"
+
+primary_contact:
+  name: "<<Full Name>>"
+  email: "<<primary@example.com>>"
+  phone: "<<+91-XXXXXXXXXX>>"
+
+team_members:
+  - name: "<<Member 1 Full Name>>"
+    email: "<<member1@example.com>>"
+    role: "ML Engineer"
+
+# ============================================================================
+# Code and reproducibility
+# ============================================================================
+github_repo: "<<https://github.com/USERNAME/REPO>>"
+sandbox_link: "<<https://huggingface.co/spaces/USERNAME/evidencerank>>"  # see sandbox/README.md
+reproduce_command: "python execution/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+
+# ============================================================================
+# Compute environment   (development machine — adjust if you reproduce elsewhere)
+# ============================================================================
+compute:
+  platform: "MacBook (Apple Silicon)"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.14"          # any 3.9+ works; stdlib only
+  os: "macOS (Darwin 24.6)"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: false  # no embeddings/indexes/model weights to precompute
+  pre_computation_time_minutes: 0
+
+# ============================================================================
+# AI tools declaration  (transparency only — honest)
+# ============================================================================
+ai_tools_used:
+  - "Claude"
+
+ai_usage_summary: |
+  Claude (Anthropic) was used as a pair-programmer for architecture discussion, code review,
+  and iterating on the evaluation methodology. All design decisions were validated by our own
+  offline eval harness (planted cases, proxy NDCG/MAP, a hand-labeled gold set), not accepted
+  on the model's say-so. No candidate data was sent to any hosted LLM, and NO LLM is called
+  during ranking — the ranking step is offline, CPU-only, and dependency-free by construction.
+
+# ============================================================================
+# Approach summary (<=200 words)
+# ============================================================================
+methodology_summary: |
+  EvidenceRank is a deterministic, stdlib-only ranker that scores candidates on grounded
+  evidence of fit rather than keyword overlap. The JD is encoded as a declarative set of
+  requirements (requirements.json); each candidate becomes (requirement, evidence,
+  satisfaction) triples. Score = base x trap_penalties x behavioral_modifier. Base is a
+  weighted sum of six grounded components (builder identity, retrieval/vector-search skills,
+  shipped-systems career evidence, experience band, location, evaluation/pedigree). Skills are
+  trust-weighted by endorsements x duration x assessment so unbacked keyword-stuffing doesn't
+  count; behavioral signals are a bidirectional multiplier so unavailable candidates are
+  down-weighted (per the JD); honeypots are forced near-zero by internal-consistency checks.
+  Every component was kept or rejected by an offline eval harness: planted oracle cases, proxy
+  NDCG/MAP/P@10 against an independent labeler, and a 60-candidate hand-labeled gold set
+  (MAP=1.0). We tested and REJECTED a semantic-embedding stage (hurt NDCG, fragile dependency)
+  and extra honeypot checks (false positives) — restraint by evidence. Runtime ~12s for 100K
+  on CPU, no network, no GPU; 0 honeypots and 0 keyword-stuffers in the top 100.
+
+# ============================================================================
+# Declarations
+# ============================================================================
+declarations:
+  read_submission_spec: true
+  code_is_original_work: true       # our team's original work; AI used as a tool
+  no_collusion: true
+  honeypot_check_done: true         # explicit internal-consistency checks; 0 in top 100
+  reproduction_tested: true         # reproduce_command verified end-to-end (~12s, CPU, no network)

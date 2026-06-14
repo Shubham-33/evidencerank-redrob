@@ -1,0 +1,3 @@
+# Sandbox UI only — NOT part of the ranking reproduction path.
+# The ranker (../execution/rank.py) is pure Python standard library.
+streamlit>=1.30

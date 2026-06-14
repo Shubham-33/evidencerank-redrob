@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "description": "Hand-labeled relevance tiers (0-5) for a less-correlated eval yardstick, independent of both the ranker formula and the rules-oracle. Sampled 60 candidates with builder-ish current titles (a coarse recruiter pre-filter), then assigned tiers by reading each full profile against the Senior AI Engineer JD.",
+    "tier_meaning": "5=ideal hire; 4=strong fit; 3=relevant, real retrieval/ranking/ML work; 2=adjacent (data-eng/CV) or out-of-region; 1=real engineer but no genuine AI/retrieval relevance (incl. unsupported keyword skills); 0=non-technical/disguised stuffer or irrelevant.",
+    "sample_seed": 31,
+    "labeled_by": "human-judgment pass reading full profiles (title, summary, career descriptions, skills w/ depth, behavioral signals)"
+  },
+  "_rationale": {
+    "CAND_0018653": "tier3 — genuine ML Engineer 6.5y Kochi; built recommendation features (collaborative filtering) + BM25 retrieval at product EdTech; responsive (rr0.72). CV background caps it below 4.",
+    "CAND_0019845": "tier3 — real applied ML 3.4y Pune; recommendation features + Pinecone (vector DB) at Zomato; excellent availability. Under-experienced (below 5-9 band).",
+    "CAND_0019880": "tier3 — applied ML 5.7y Pune (ideal loc); Embeddings+QLoRA, AI/ML company, open-to-work, pc80. Career evidence is churn/NLP not shipped ranking, so not 4.",
+    "CAND_0015895": "tier2 — data engineer 7.5y transitioning to ML; Sentence Transformers+PyTorch but data-infra focus, not retrieval/ranking; Dubai (out of region), rr0.15 unresponsive.",
+    "CAND_0080589": "tier2 — genuine ML but CV-heavy (Diffusion/CV/Image Classification) = JD down-weight; some NLP + Qdrant; in band, Mumbai, open, ic0.97.",
+    "CAND_0004430": "tier1 trap — Recommendation Systems(adv,60e) skill but Mobile Developer at consulting firms, android/QA career, rr0.16; skill unsupported by role.",
+    "CAND_0031120": "tier1 trap — Qdrant(adv,46e) but QA Engineer at Accenture (consulting), QA/frontend career, Toronto.",
+    "CAND_0018153": "tier0 trap — MLflow/LLMs/LangChain skills but Business Analyst whose summary says 'marketing manager'; BA/mechanical career; rr0.11.",
+    "CAND_0060402": "tier0 trap — CNN(adv,42e) but Business Analyst / 'marketing manager' summary, consulting BA career."
+  },
+  "labels": {
+    "CAND_0001614": 0, "CAND_0002679": 1, "CAND_0004069": 0, "CAND_0004430": 1,
+    "CAND_0005773": 1, "CAND_0006895": 0, "CAND_0008021": 1, "CAND_0008109": 1,
+    "CAND_0011538": 0, "CAND_0012515": 1, "CAND_0015138": 0, "CAND_0015146": 1,
+    "CAND_0015895": 2, "CAND_0018153": 0, "CAND_0018378": 1, "CAND_0018653": 3,
+    "CAND_0018773": 1, "CAND_0018943": 1, "CAND_0019845": 3, "CAND_0019880": 3,
+    "CAND_0024273": 0, "CAND_0026778": 0, "CAND_0027483": 1, "CAND_0027600": 1,
+    "CAND_0027735": 1, "CAND_0028332": 1, "CAND_0029203": 0, "CAND_0029386": 1,
+    "CAND_0031120": 1, "CAND_0031196": 1, "CAND_0033173": 0, "CAND_0044542": 1,
+    "CAND_0046009": 0, "CAND_0047965": 0, "CAND_0049189": 1, "CAND_0050772": 1,
+    "CAND_0052765": 1, "CAND_0052880": 1, "CAND_0054241": 1, "CAND_0055550": 1,
+    "CAND_0056057": 1, "CAND_0059107": 0, "CAND_0060402": 0, "CAND_0063403": 1,
+    "CAND_0071101": 1, "CAND_0071828": 1, "CAND_0072361": 0, "CAND_0072439": 1,
+    "CAND_0073992": 1, "CAND_0079019": 0, "CAND_0080094": 0, "CAND_0080589": 2,
+    "CAND_0087904": 0, "CAND_0089369": 1, "CAND_0089443": 1, "CAND_0092262": 0,
+    "CAND_0096042": 0, "CAND_0097776": 0, "CAND_0098926": 0, "CAND_0099318": 1
+  }
+}

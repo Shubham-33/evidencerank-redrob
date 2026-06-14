@@ -1,0 +1,8 @@
+# EvidenceRank ranker — NO third-party dependencies.
+#
+# The ranking step (execution/rank.py) and the eval harness (execution/evaluate.py) use
+# only the Python 3.9+ standard library. This is deliberate: it guarantees the submission
+# reproduces inside the Stage-3 sandbox without dependency/version risk.
+#
+# The optional hosted sandbox UI has its own requirements in sandbox/requirements.txt
+# (streamlit) — it is NOT part of the ranking reproduction path.

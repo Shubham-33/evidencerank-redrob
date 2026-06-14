@@ -1,0 +1,91 @@
+[
+  {
+    "key": "title",
+    "label": "Builder identity",
+    "kind": "core",
+    "weight": 0.22,
+    "jd_quote": "This role writes code. ... Strong Python. Yes really, we care about code quality."
+  },
+  {
+    "key": "skills",
+    "label": "Retrieval & vector-search skills",
+    "kind": "core",
+    "weight": 0.2,
+    "jd_quote": "Production experience with embeddings-based retrieval systems ... vector databases or hybrid search infrastructure."
+  },
+  {
+    "key": "career",
+    "label": "Shipped ranking/search systems",
+    "kind": "core",
+    "weight": 0.26,
+    "jd_quote": "Has shipped at least one end-to-end ranking, search, or recommendation system to real users at meaningful scale."
+  },
+  {
+    "key": "experience",
+    "label": "Experience band 5-9 yrs",
+    "kind": "core",
+    "weight": 0.16,
+    "jd_quote": "5-9 years ... roughly 6-8 years total experience."
+  },
+  {
+    "key": "location",
+    "label": "Location / relocation fit",
+    "kind": "core",
+    "weight": 0.1,
+    "jd_quote": "Located in or willing to relocate to Noida or Pune."
+  },
+  {
+    "key": "eval",
+    "label": "Evaluation frameworks & pedigree",
+    "kind": "core",
+    "weight": 0.06,
+    "jd_quote": "designing evaluation frameworks for ranking systems \u2014 NDCG, MRR, MAP."
+  },
+  {
+    "key": "keyword_stuffer",
+    "label": "Keyword-stuffer trap",
+    "kind": "negative",
+    "factor": 0.15,
+    "jd_quote": "not 'find candidates whose skills section contains the most AI keywords'."
+  },
+  {
+    "key": "consulting_only",
+    "label": "Consulting-only career",
+    "kind": "negative",
+    "factor": 0.55,
+    "jd_quote": "People who have only worked at consulting firms ... we're not a fit."
+  },
+  {
+    "key": "research_only",
+    "label": "Research/academia-only",
+    "kind": "negative",
+    "factor": 0.5,
+    "jd_quote": "pure research environments ... without any production deployment \u2014 we will not move forward."
+  },
+  {
+    "key": "cv_speech_only",
+    "label": "CV/speech/robotics-only",
+    "kind": "negative",
+    "factor": 0.6,
+    "jd_quote": "primary expertise is computer vision, speech, or robotics without ... NLP/IR exposure."
+  },
+  {
+    "key": "job_hopper",
+    "label": "Title-chasing job-hopper",
+    "kind": "negative",
+    "factor": 0.8,
+    "jd_quote": "optimizing for ... titles by switching companies every 1.5 years ... not a fit."
+  },
+  {
+    "key": "availability",
+    "label": "Behavioral availability",
+    "kind": "modifier",
+    "jd_quote": "hasn't logged in for 6 months ... not actually available. Down-weight them appropriately."
+  },
+  {
+    "key": "honeypot",
+    "label": "Profile-consistency gate",
+    "kind": "gate",
+    "jd_quote": "honeypot candidates with subtly impossible profiles ... forced to relevance tier 0."
+  }
+]

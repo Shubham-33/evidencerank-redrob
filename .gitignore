@@ -1,0 +1,31 @@
+# Intermediates — always regenerated, never committed
+.tmp/
+
+# Organizer-provided data bundle (large + their materials; not redistributed in the repo)
+# NB: brackets must be escaped — [PUB] is a glob character-class in gitignore.
+\[PUB\] India_runs_data_and_ai_challenge/
+*.zip
+candidates.jsonl
+candidates.jsonl.gz
+submission.csv
+
+# Secrets & credentials
+.env
+credentials.json
+token.json
+
+# OS / editor
+.DS_Store
+
+# Off-topic scaffold from initial setup — excluded from the submission repo (kept locally)
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.env.example
+execution/webhooks.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
