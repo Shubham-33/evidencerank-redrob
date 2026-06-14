@@ -188,13 +188,17 @@ col_a, col_b = st.columns(2)
 topk = col_a.slider("Top-K to show", 5, 100, 25)
 min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
 
-# Submit button. The bundled sample auto-runs; an upload runs once you click.
+# Submit button — ranks the current source. The button click records WHICH source was
+# ranked, so a freshly uploaded file shows a "click to rank" prompt until you press it,
+# while the bundled sample demos immediately on first load.
+src_name = uploaded.name if uploaded is not None else "bundled sample"
 if st.button("🚀  Rank candidates", type="primary", use_container_width=True):
-    st.session_state.run = True
-if uploaded is None:
-    st.session_state.run = True
-if not st.session_state.get("run"):
-    st.info("File ready — click **🚀 Rank candidates** to run the ranking.")
+    st.session_state.ranked_src = src_name
+    st.toast(f"Ranked: {src_name}")
+if st.session_state.get("ranked_src") is None and uploaded is None:
+    st.session_state.ranked_src = "bundled sample"   # auto-demo on first visit
+if st.session_state.get("ranked_src") != src_name:
+    st.info(f"📄 **{src_name}** is ready — click **🚀 Rank candidates** to rank it.")
     st.stop()
 
 SAMPLE = os.path.join(HERE, "sample_candidates.jsonl")
