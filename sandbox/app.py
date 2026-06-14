@@ -188,6 +188,15 @@ col_a, col_b = st.columns(2)
 topk = col_a.slider("Top-K to show", 5, 100, 25)
 min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
 
+# Submit button. The bundled sample auto-runs; an upload runs once you click.
+if st.button("🚀  Rank candidates", type="primary", use_container_width=True):
+    st.session_state.run = True
+if uploaded is None:
+    st.session_state.run = True
+if not st.session_state.get("run"):
+    st.info("File ready — click **🚀 Rank candidates** to run the ranking.")
+    st.stop()
+
 SAMPLE = os.path.join(HERE, "sample_candidates.jsonl")
 fileobj = uploaded if uploaded is not None else (open(SAMPLE, "rb") if os.path.exists(SAMPLE) else None)
 if fileobj is None:
@@ -227,19 +236,23 @@ st.markdown(
     f'<div class="kpi pnk"><div class="lbl">Avg match</div><div class="num">{avg_match}%</div><div class="sub">of shown</div></div>'
     f'</div>', unsafe_allow_html=True)
 
+# ---- export CSV (built first so the download sits ABOVE the list) ----------
+csv_lines = ["candidate_id,rank,score,reasoning"]
+for i, c, final in shown:
+    reason = reasonings[c.get("candidate_id", id(c))].replace('"', '""')
+    csv_lines.append(f'{c.get("candidate_id","")},{i},{final},"{reason}"')
+
+# ---- header row: section title (left) + download button (right) ------------
+head_l, head_r = st.columns([3, 1])
+head_l.markdown('<div class="sec">Ranked candidates</div>', unsafe_allow_html=True)
+head_r.download_button("⬇  Download CSV", "\n".join(csv_lines) + "\n",
+                       file_name="submission_sample.csv", mime="text/csv",
+                       use_container_width=True, disabled=not shown)
+
 # ---- candidate cards -------------------------------------------------------
-st.markdown('<div class="sec">Ranked candidates</div>', unsafe_allow_html=True)
 if not shown:
     st.info("No candidates above the selected match threshold — lower the *Min match %* filter.")
 else:
     cards = "".join(card_html(i, c, final, reasonings[c.get("candidate_id", id(c))])
                     for i, c, final in shown)
     st.markdown(cards, unsafe_allow_html=True)
-
-# ---- export ----------------------------------------------------------------
-csv_lines = ["candidate_id,rank,score,reasoning"]
-for i, c, final in shown:
-    reason = reasonings[c.get("candidate_id", id(c))].replace('"', '""')
-    csv_lines.append(f'{c.get("candidate_id","")},{i},{final},"{reason}"')
-st.download_button("⬇  Download ranking CSV", "\n".join(csv_lines) + "\n",
-                   file_name="submission_sample.csv", mime="text/csv")
