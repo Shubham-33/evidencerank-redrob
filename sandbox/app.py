@@ -19,7 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "execution"))
 import rank  # noqa: E402  (path set above)
 
-st.set_page_config(page_title="EvidenceRank", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="EvidenceRank", page_icon="🎯", layout="wide",
+                   initial_sidebar_state="collapsed")
 
 # ---- design system (Urbanist + the reference palette) ----------------------
 CSS = """
@@ -27,13 +28,17 @@ CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
 html, body, .stApp, [class*="css"] { font-family:'Urbanist',-apple-system,sans-serif; }
 .stApp { background:#F4F3F8; }
-#MainMenu, header[data-testid="stHeader"], footer { visibility:hidden; }
-.block-container { padding-top:1.4rem; padding-bottom:2rem; max-width:1180px; }
-[data-testid="stSidebar"] { background:#FFFFFF; border-right:1px solid #ECEAF4; }
+#MainMenu, footer { visibility:hidden; }
+header[data-testid="stHeader"] { background:transparent; }
+.block-container { padding-top:1.2rem; padding-bottom:2rem; max-width:1180px; }
+
+/* control bar */
+.ctrl-h { color:#352B38; font-weight:800; font-size:15px; margin:2px 0 8px; }
+[data-testid="stFileUploader"] section { border-radius:14px; border:1.5px dashed #C9C6E6; background:#FCFCFE; }
 
 .er-hero { background:linear-gradient(120deg,#352B38 0%,#5A4A78 100%); border-radius:22px;
   padding:22px 26px; color:#fff; margin-bottom:18px; box-shadow:0 10px 30px rgba(53,43,56,.18); }
-.er-hero h1 { font-size:28px; font-weight:800; margin:0; letter-spacing:-.5px; }
+.er-hero h1 { font-size:36px; font-weight:800; margin:0; letter-spacing:-.5px; }
 .er-hero p { margin:4px 0 0; color:#DAD8F9; font-weight:500; font-size:14px; }
 .er-pill { display:inline-block; background:rgba(255,255,255,.16); color:#fff; font-weight:600;
   font-size:12px; padding:4px 12px; border-radius:99px; margin-top:10px; }
@@ -165,21 +170,23 @@ def card_html(i, c, final, reasoning):
     </div>"""
 
 
-# ---- sidebar ---------------------------------------------------------------
-with st.sidebar:
-    st.markdown("### 🎯 EvidenceRank")
-    st.caption("Senior AI Engineer · Redrob")
-    topk = st.slider("Top-K to show", 5, 100, 25)
-    min_pct = st.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
-    uploaded = st.file_uploader("Candidates (.jsonl / .json)", type=["jsonl", "json", "txt"])
-    st.caption("JSONL or a JSON array. Up to 500 MB. The bundled 50-candidate sample loads by default.")
-
 # ---- hero ------------------------------------------------------------------
 st.markdown(
-    '<div class="er-hero"><h1>Candidate shortlist</h1>'
-    '<p>Ranked by grounded evidence of fit — not keyword overlap.</p>'
+    '<div class="er-hero"><h1>🎯 EvidenceRank</h1>'
+    '<p>Candidate shortlist for the Senior AI Engineer role — ranked by grounded evidence '
+    'of fit, not keyword overlap.</p>'
     '<span class="er-pill">CPU-only · stdlib · explainable</span></div>',
     unsafe_allow_html=True)
+
+# ---- controls (in the main area so they're always visible) -----------------
+st.markdown('<div class="ctrl-h">⚙️ Upload &amp; options</div>', unsafe_allow_html=True)
+uploaded = st.file_uploader(
+    "Candidates file (.jsonl or .json) — JSONL or a JSON array, up to 500 MB. "
+    "Leave empty to use the bundled 50-candidate sample.",
+    type=["jsonl", "json", "txt"])
+col_a, col_b = st.columns(2)
+topk = col_a.slider("Top-K to show", 5, 100, 25)
+min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
 
 SAMPLE = os.path.join(HERE, "sample_candidates.jsonl")
 fileobj = uploaded if uploaded is not None else (open(SAMPLE, "rb") if os.path.exists(SAMPLE) else None)
