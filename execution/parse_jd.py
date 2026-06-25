@@ -28,8 +28,8 @@ NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 DEFAULT_MODEL = "meta/llama-3.3-70b-instruct"
 
 SCHEMA_KEYS = ["role", "seniority", "experience_min", "experience_max", "core_skills",
-               "support_skills", "relevant_titles", "preferred_locations", "country",
-               "anti_patterns", "summary"]
+               "support_skills", "relevant_titles", "evidence_signals", "preferred_locations",
+               "country", "anti_patterns", "summary"]
 
 PROMPT = """You extract structured hiring requirements from a job description so a ranking
 system can score candidates. Return ONLY a single JSON object (no prose, no markdown fences)
@@ -46,6 +46,11 @@ with EXACTLY these keys:
   title would contain (e.g. a Frontend role -> ["frontend","engineer","ui","web"]; an ML
   role -> ["machine learning","ml","ai","engineer"]). Include the domain words AND the
   generic role word (engineer/developer/scientist/designer/manager).
+- evidence_signals: array of lowercase SHORT plain-language phrases that a strong
+  candidate's experience would DESCRIBE even without naming the keyword — so the search can
+  find people who "read between the lines". E.g. for an ML/search role:
+  ["built recommendation", "ranks results by relevance", "search relevance", "deployed model
+  to production", "personalization", "predicted user interest"]. 6-12 short phrases.
 - preferred_locations: array of lowercase cities/regions the role prefers (empty if remote/any)
 - country: lowercase country, or "any"
 - anti_patterns: array, any of ["consulting_only","research_only","cv_speech_only","job_hopper","non_technical"]
@@ -80,56 +85,6 @@ def chat(prompt, api_key, model=DEFAULT_MODEL, timeout=60, max_tokens=512, tempe
 
 def call_nvidia(jd_text, api_key, model=DEFAULT_MODEL):
     return chat(PROMPT.format(jd=jd_text[:12000]), api_key, model, max_tokens=1024)
-
-
-# --- LLM re-rank: read a SHORTLIST between the lines -------------------------
-RERANK_PROMPT = """You are an expert technical recruiter. READ BETWEEN THE LINES: credit a
-candidate whose described experience matches the role even if they don't list the exact
-keywords — e.g. someone who "built an end-to-end system that orders items by predicted
-relevance" clearly has recommendation/ranking experience even without those words. Discount
-keyword-stuffing with no supporting experience, and down-weight candidates who aren't
-genuinely available (stale activity, very low recruiter response).
-
-JOB DESCRIPTION:
-{jd}
-
-CANDIDATE PROFILE:
-{cand}
-
-Return ONLY JSON: {{"fit": <integer 0-100>, "reason": "<one specific sentence grounded in the profile>"}}"""
-
-
-def candidate_brief(c):
-    """Compact, grounded profile text for the LLM to reason over."""
-    p = c.get("profile", {}) or {}
-    sig = c.get("redrob_signals", {}) or {}
-    lines = [f"Title: {p.get('current_title','')}",
-             f"Experience: {p.get('years_of_experience','')} yrs | Location: {p.get('location','')}",
-             f"Summary: {(p.get('summary') or '')[:450]}"]
-    for j in (c.get("career_history") or [])[:3]:
-        lines.append(f"- {j.get('title','')} @ {j.get('company','')} "
-                     f"({j.get('industry','')}): {(j.get('description') or '')[:260]}")
-    lines.append("Skills: " + ", ".join((s.get("name") or "") for s in (c.get("skills") or [])[:12]))
-    lines.append(f"Signals: last_active={sig.get('last_active_date')}, "
-                 f"recruiter_response_rate={sig.get('recruiter_response_rate')}, "
-                 f"open_to_work={sig.get('open_to_work_flag')}")
-    return "\n".join(lines)
-
-
-def llm_rerank(candidates, jd_text, api_key, model=DEFAULT_MODEL, top_n=12):
-    """Re-score the top-N shortlist by reading each profile between the lines.
-    Returns a list of {candidate, fit (0-100 or None), reason}. Falls back to None on error."""
-    out = []
-    for c in candidates[:top_n]:
-        try:
-            j = extract_json(chat(
-                RERANK_PROMPT.format(jd=jd_text[:4000], cand=candidate_brief(c)),
-                api_key, model, max_tokens=200))
-            out.append({"candidate": c, "fit": float(j.get("fit", 0)),
-                        "reason": str(j.get("reason", ""))})
-        except Exception:  # noqa: BLE001 — keep the candidate at its rule-based spot on failure
-            out.append({"candidate": c, "fit": None, "reason": None})
-    return out
 
 
 def extract_json(content):
@@ -193,7 +148,8 @@ def deterministic_parse(jd_text):
         "role": role, "seniority": "senior" if "senior" in t else "mid",
         "experience_min": emin, "experience_max": emax,
         "core_skills": core[:18] or ["python"], "support_skills": [],
-        "relevant_titles": titles[:12], "preferred_locations": locs,
+        "relevant_titles": titles[:12], "evidence_signals": [],
+        "preferred_locations": locs,
         "country": "india" if "india" in t else "any", "anti_patterns": anti,
         "summary": "Requirements extracted deterministically from the JD text.",
         "_source": "deterministic",
@@ -206,6 +162,7 @@ def normalize(cfg):
     out["core_skills"] = [str(s).lower() for s in (out.get("core_skills") or [])]
     out["support_skills"] = [str(s).lower() for s in (out.get("support_skills") or [])]
     out["relevant_titles"] = [str(s).lower() for s in (out.get("relevant_titles") or [])]
+    out["evidence_signals"] = [str(s).lower() for s in (out.get("evidence_signals") or [])]
     out["preferred_locations"] = [str(s).lower() for s in (out.get("preferred_locations") or [])]
     out["anti_patterns"] = [str(s).lower() for s in (out.get("anti_patterns") or [])]
     try:

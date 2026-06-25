@@ -328,8 +328,13 @@ def apply_jd_config(cfg):
     global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND, _JD_TITLES, _JD_DEFAULTS
     if _JD_DEFAULTS is None:
         _JD_DEFAULTS = (set(CORE_TERMS), set(SUPPORT_TERMS), set(INDIA_PREFERRED))
-    if cfg.get("core_skills"):
-        CORE_TERMS = {s.lower() for s in cfg["core_skills"]}
+    # The LLM identifies WHAT to search for: keyword skills + plain-language "evidence
+    # signals" (phrases a strong candidate would describe even without the keyword). Both
+    # feed the deterministic search, so it finds people who read between the lines.
+    terms = {s.lower() for s in (cfg.get("core_skills") or [])}
+    terms |= {s.lower() for s in (cfg.get("evidence_signals") or [])}
+    if terms:
+        CORE_TERMS = terms
     if cfg.get("support_skills"):
         SUPPORT_TERMS = {s.lower() for s in cfg["support_skills"]}
     if cfg.get("preferred_locations"):

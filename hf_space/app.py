@@ -228,12 +228,8 @@ with st.expander("📋  Job Description — feed a JD to retarget the ranker (op
         st.toast(f"JD parsed ({st.session_state.jd_cfg.get('_source')})")
     if cjd2.button("↩  Reset to built-in JD", use_container_width=True):
         st.session_state.pop("jd_cfg", None)
-    do_llm = st.checkbox(
-        "🧠 LLM re-rank the shortlist — *read between the lines*",
-        help="After the fast rule-based ranker filters the pool, the NVIDIA LLM reads the top "
-             "candidates' actual described experience vs the JD and re-ranks them — crediting "
-             "real experience even without the exact keywords. Cost-safe: only the shortlist "
-             "(~10), never the full 100k. Needs a key.")
+    st.caption("The LLM reads the JD and identifies **what to search for** — keywords, skills, "
+               "role titles, and plain-language signals. The app then does the ranking itself.")
     cfg = st.session_state.get("jd_cfg")
     if cfg:
         st.success(f"Ranking against parsed JD · source: `{cfg.get('_source')}`")
@@ -241,7 +237,12 @@ with st.expander("📋  Job Description — feed a JD to retarget the ranker (op
             f"**Role:** {cfg.get('role','—')} &nbsp;·&nbsp; **Experience:** "
             f"{cfg.get('experience_min')}–{cfg.get('experience_max')} yrs &nbsp;·&nbsp; "
             f"**Locations:** {', '.join(cfg.get('preferred_locations') or ['any'])}")
-        st.markdown("**Core skills extracted:** " + ", ".join(cfg.get("core_skills") or []))
+        st.markdown("**Skills to search:** " + ", ".join(cfg.get("core_skills") or []))
+        if cfg.get("relevant_titles"):
+            st.markdown("**Relevant titles:** " + ", ".join(cfg.get("relevant_titles")))
+        if cfg.get("evidence_signals"):
+            st.markdown("**Plain-language signals (read between the lines):** "
+                        + ", ".join(cfg.get("evidence_signals")))
 
 # Retarget the engine from the parsed JD (or restore built-in defaults) every run.
 if st.session_state.get("jd_cfg"):
@@ -289,31 +290,6 @@ for _, c, _f in shown:
     f2, comp, honey = rank.score_candidate(c)
     reasonings[c.get("candidate_id", id(c))] = rank.build_reasoning(
         c, rank.evaluate_requirements(c, comp, honey), f2, honey)
-
-# ---- optional LLM re-rank of the shortlist (reads between the lines) --------
-if do_llm and nvidia_key and shown and not hasattr(parse_jd, "llm_rerank"):
-    st.warning("LLM re-rank isn't available in the running build yet — reboot the app "
-               "(Manage app → ⋮ → Reboot) to pick up the latest code.")
-elif do_llm and nvidia_key and shown:
-    cand_list = [c for _, c, _ in shown]
-    with st.spinner("🧠 LLM reading the shortlist between the lines…"):
-        rr = parse_jd.llm_rerank(cand_list, jd_text, nvidia_key, top_n=min(10, len(cand_list)))
-    fits = {}
-    for r in rr:
-        cid = r["candidate"].get("candidate_id", id(r["candidate"]))
-        if r["fit"] is not None:
-            fits[cid] = r["fit"]
-            reasonings[cid] = "🧠 " + (r["reason"] or "")
-    if fits:
-        reordered = sorted(shown, key=lambda t: (
-            t[1].get("candidate_id", id(t[1])) in fits,
-            fits.get(t[1].get("candidate_id", id(t[1])), 0)), reverse=True)
-        shown = [(i + 1, c, (fits[c.get("candidate_id", id(c))] / 100.0
-                             if c.get("candidate_id", id(c)) in fits else f))
-                 for i, (_, c, f) in enumerate(reordered)]
-        st.caption(f"🧠 Top {len(fits)} re-ranked by the LLM (read between the lines).")
-    elif do_llm:
-        st.caption("⚠️ LLM re-rank unavailable (no key or API error) — showing rule-based order.")
 
 avg_match = round(sum(min(f, 1.0) * 100 for _, _, f in shown) / len(shown)) if shown else 0
 
