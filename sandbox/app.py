@@ -200,31 +200,52 @@ JD_FILE = os.path.join(HERE, "job_description.txt")
 default_jd = open(JD_FILE, encoding="utf-8").read() if os.path.exists(JD_FILE) else ""
 
 
+# Any OpenAI-compatible provider: name -> (base_url, default_model). Several have free tiers.
+PROVIDERS = {
+    "NVIDIA (free)":   ("https://integrate.api.nvidia.com/v1", "meta/llama-3.3-70b-instruct"),
+    "Groq (free)":     ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "OpenAI":          ("https://api.openai.com/v1", "gpt-4o-mini"),
+    "OpenRouter":      ("https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct"),
+    "Google Gemini":   ("https://generativelanguage.googleapis.com/v1beta/openai", "gemini-1.5-flash"),
+    "Custom (OpenAI-compatible)": ("", ""),
+}
+
+
 def _stored_key():
     """Read a key from Streamlit secrets / env, without crashing when none is configured."""
     try:
-        k = st.secrets.get("NVIDIA_API_KEY")  # raises if no secrets.toml exists
+        k = st.secrets.get("LLM_API_KEY") or st.secrets.get("NVIDIA_API_KEY")
         if k:
             return k
     except Exception:  # noqa: BLE001
         pass
-    return os.environ.get("NVIDIA_API_KEY", "")
+    return os.environ.get("LLM_API_KEY") or os.environ.get("NVIDIA_API_KEY", "")
 
 
 with st.expander("📋  Job Description — feed a JD to retarget the ranker (optional)"):
     jd_text = st.text_area("Paste / edit the job description", value=default_jd, height=180)
+    pc1, pc2 = st.columns([1, 1])
+    provider = pc1.selectbox("LLM provider", list(PROVIDERS), index=0,
+                             help="Any OpenAI-compatible API. Several offer free keys (NVIDIA, Groq).")
+    base_default, model_default = PROVIDERS[provider]
+    if provider.startswith("Custom"):
+        base_url = pc2.text_input("Base URL", placeholder="https://api.example.com/v1")
+        model = st.text_input("Model", placeholder="model-name")
+    else:
+        model = pc2.text_input("Model", value=model_default)
+        base_url = base_default
     key_input = st.text_input(
-        "NVIDIA API key (optional — paste 'nvapi-…' to parse the JD with the LLM)",
-        type="password", placeholder="nvapi-…",
-        help="Used only this session to parse the JD — not stored, not committed. "
-             "Free key at build.nvidia.com. Leave blank to use deterministic parsing.")
-    nvidia_key = key_input.strip() or _stored_key()
-    st.caption("🟢 LLM parsing enabled (key provided)." if nvidia_key
+        "API key (paste your key to parse the JD with the LLM)",
+        type="password", placeholder="paste your API key…",
+        help="Used only this session — not stored, not committed. Leave blank for deterministic parsing.")
+    api_key = key_input.strip() or _stored_key()
+    st.caption(f"🟢 LLM parsing via **{provider}** enabled." if api_key
                else "⚪ No key — JDs parse with the deterministic stdlib fallback (still works).")
     cjd1, cjd2 = st.columns(2)
     if cjd1.button("🧠  Parse JD & retarget", use_container_width=True):
         with st.spinner("Parsing the JD…"):
-            st.session_state.jd_cfg = parse_jd.parse_jd(jd_text, api_key=nvidia_key or None)
+            st.session_state.jd_cfg = parse_jd.parse_jd(
+                jd_text, api_key=api_key or None, base_url=base_url or None, model=model or None)
         st.toast(f"JD parsed ({st.session_state.jd_cfg.get('_source')})")
     if cjd2.button("↩  Reset to built-in JD", use_container_width=True):
         st.session_state.pop("jd_cfg", None)

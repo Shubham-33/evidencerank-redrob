@@ -13,15 +13,18 @@ The sandbox has a **📋 Job Description** panel: paste any JD and click **Parse
 (skills, experience band, locations, traps) and the ranker re-targets at that JD live. This is
 an **offline pre-compute** step — the ranking itself stays LLM-free, per the spec.
 
-- **With an NVIDIA key** → the JD is parsed by an LLM (deep "read between the lines").
+- **With an API key** → the JD is parsed by an LLM, which identifies the keywords, skills,
+  role titles, and plain-language signals to search for (the "read between the lines" factors).
 - **Without a key** → a deterministic stdlib fallback still extracts the essentials.
 
-Set the key so it's **never committed**:
-- **Streamlit Cloud:** app → **Settings → Secrets** → add `NVIDIA_API_KEY = "nvapi-..."`
-- **Locally:** `export NVIDIA_API_KEY=nvapi-...` before `streamlit run`
+**Any OpenAI-compatible provider works** — pick one in the dropdown (NVIDIA, Groq, OpenAI,
+OpenRouter, Gemini) or **Custom** (enter any base URL + model). NVIDIA and Groq have free keys.
+Paste the key directly in the app (session-only), or set it so it's never committed:
+- **Streamlit Cloud / HF:** app **Settings → Secrets** → `LLM_API_KEY = "..."` (optionally
+  `LLM_BASE_URL` / `LLM_MODEL`).
+- **Locally:** `export LLM_API_KEY=...` (and optionally `LLM_BASE_URL`, `LLM_MODEL`).
 
-Get a free key at build.nvidia.com. The official `submission.csv` is unaffected — it always
-uses the validated built-in Senior AI Engineer config.
+The official `submission.csv` is unaffected — it always uses the validated built-in config.
 
 ## Run locally
 

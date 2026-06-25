@@ -24,7 +24,8 @@ import ssl
 import sys
 import urllib.request
 
-NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+# Any OpenAI-compatible provider works — just change base_url + model + key.
+DEFAULT_BASE = "https://integrate.api.nvidia.com/v1"   # NVIDIA's free API
 DEFAULT_MODEL = "meta/llama-3.3-70b-instruct"
 
 SCHEMA_KEYS = ["role", "seniority", "experience_min", "experience_max", "core_skills",
@@ -64,15 +65,18 @@ Job description:
 """
 
 
-def chat(prompt, api_key, model=DEFAULT_MODEL, timeout=60, max_tokens=512, temperature=0.2):
-    """Generic NVIDIA chat-completion call. Returns the message content string."""
+def chat(prompt, api_key, base_url=DEFAULT_BASE, model=DEFAULT_MODEL,
+         timeout=60, max_tokens=512, temperature=0.2):
+    """Generic OpenAI-compatible chat-completion call (NVIDIA / OpenAI / Groq / OpenRouter /
+    Gemini-compat / local …). Returns the message content string."""
+    url = base_url.rstrip("/") + "/chat/completions"
     body = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": temperature,
         "max_tokens": max_tokens,
     }).encode("utf-8")
-    req = urllib.request.Request(NVIDIA_URL, data=body, method="POST", headers={
+    req = urllib.request.Request(url, data=body, method="POST", headers={
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -83,8 +87,8 @@ def chat(prompt, api_key, model=DEFAULT_MODEL, timeout=60, max_tokens=512, tempe
     return data["choices"][0]["message"]["content"]
 
 
-def call_nvidia(jd_text, api_key, model=DEFAULT_MODEL):
-    return chat(PROMPT.format(jd=jd_text[:12000]), api_key, model, max_tokens=1024)
+def call_llm(jd_text, api_key, base_url=DEFAULT_BASE, model=DEFAULT_MODEL):
+    return chat(PROMPT.format(jd=jd_text[:12000]), api_key, base_url, model, max_tokens=1024)
 
 
 def extract_json(content):
@@ -175,16 +179,19 @@ def normalize(cfg):
     return out
 
 
-def parse_jd(jd_text, api_key=None, model=DEFAULT_MODEL):
-    """Return a normalized JD config. Uses NVIDIA if a key is available, else deterministic."""
-    api_key = api_key or os.environ.get("NVIDIA_API_KEY")
+def parse_jd(jd_text, api_key=None, base_url=None, model=None):
+    """Return a normalized JD config. Uses any OpenAI-compatible LLM if a key is available,
+    else a deterministic stdlib fallback."""
+    api_key = api_key or os.environ.get("LLM_API_KEY") or os.environ.get("NVIDIA_API_KEY")
+    base_url = base_url or os.environ.get("LLM_BASE_URL") or DEFAULT_BASE
+    model = model or os.environ.get("LLM_MODEL") or DEFAULT_MODEL
     if api_key:
         try:
-            cfg = extract_json(call_nvidia(jd_text, api_key, model))
-            cfg["_source"] = "nvidia:" + model
+            cfg = extract_json(call_llm(jd_text, api_key, base_url, model))
+            cfg["_source"] = "llm:" + model
             return normalize(cfg)
         except Exception as e:  # noqa: BLE001 — fall back gracefully on any API/parse error
-            sys.stderr.write(f"[parse_jd] NVIDIA call failed ({e}); using deterministic fallback\n")
+            sys.stderr.write(f"[parse_jd] LLM call failed ({e}); using deterministic fallback\n")
     cfg = deterministic_parse(jd_text)
     cfg["_source"] = "deterministic"
     return normalize(cfg)
@@ -194,14 +201,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--jd", required=True, help="path to a job-description text file")
     ap.add_argument("--out", default="requirements_jd.json")
-    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--base-url", default=None, help="OpenAI-compatible API base, e.g. https://api.groq.com/openai/v1")
+    ap.add_argument("--model", default=None)
     ap.add_argument("--api-key", default=None)
     ap.add_argument("--mock", action="store_true", help="skip the API; deterministic only")
     args = ap.parse_args()
 
     jd_text = open(args.jd, encoding="utf-8").read()
     cfg = (deterministic_parse(jd_text) if args.mock
-           else parse_jd(jd_text, api_key=args.api_key, model=args.model))
+           else parse_jd(jd_text, api_key=args.api_key, base_url=args.base_url, model=args.model))
     cfg = normalize(cfg)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
