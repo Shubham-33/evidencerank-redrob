@@ -192,20 +192,33 @@ min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below thi
 import parse_jd  # noqa: E402  (execution/ is on sys.path)
 JD_FILE = os.path.join(HERE, "job_description.txt")
 default_jd = open(JD_FILE, encoding="utf-8").read() if os.path.exists(JD_FILE) else ""
-nvidia_key = (st.secrets.get("NVIDIA_API_KEY", None) if hasattr(st, "secrets") else None) \
-    or os.environ.get("NVIDIA_API_KEY")
+
+
+def _stored_key():
+    """Read a key from Streamlit secrets / env, without crashing when none is configured."""
+    try:
+        k = st.secrets.get("NVIDIA_API_KEY")  # raises if no secrets.toml exists
+        if k:
+            return k
+    except Exception:  # noqa: BLE001
+        pass
+    return os.environ.get("NVIDIA_API_KEY", "")
+
 
 with st.expander("📋  Job Description — feed a JD to retarget the ranker (optional)"):
     jd_text = st.text_area("Paste / edit the job description", value=default_jd, height=180)
-    st.caption(
-        ("🟢 NVIDIA key detected — JDs are parsed by the LLM (offline pre-compute)."
-         if nvidia_key else
-         "⚪ No NVIDIA key — JDs parse with the deterministic fallback. Add NVIDIA_API_KEY in "
-         "the app's *Secrets* (Streamlit) or environment for LLM parsing."))
+    key_input = st.text_input(
+        "NVIDIA API key (optional — paste 'nvapi-…' to parse the JD with the LLM)",
+        type="password", placeholder="nvapi-…",
+        help="Used only this session to parse the JD — not stored, not committed. "
+             "Free key at build.nvidia.com. Leave blank to use deterministic parsing.")
+    nvidia_key = key_input.strip() or _stored_key()
+    st.caption("🟢 LLM parsing enabled (key provided)." if nvidia_key
+               else "⚪ No key — JDs parse with the deterministic stdlib fallback (still works).")
     cjd1, cjd2 = st.columns(2)
     if cjd1.button("🧠  Parse JD & retarget", use_container_width=True):
         with st.spinner("Parsing the JD…"):
-            st.session_state.jd_cfg = parse_jd.parse_jd(jd_text, api_key=nvidia_key)
+            st.session_state.jd_cfg = parse_jd.parse_jd(jd_text, api_key=nvidia_key or None)
         st.toast(f"JD parsed ({st.session_state.jd_cfg.get('_source')})")
     if cjd2.button("↩  Reset to built-in JD", use_container_width=True):
         st.session_state.pop("jd_cfg", None)
