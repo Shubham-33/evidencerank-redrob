@@ -164,8 +164,20 @@ def honeypot_flags(c):
 
 # --- scoring components (each returns 0..1 unless noted) --------------------
 
+# Optional JD-driven relevant-title keywords (set via apply_jd_config). None => built-in.
+_JD_TITLES = None
+
+
 def score_title(prof, all_text):
     title = (prof.get("current_title") or "").lower()
+    if _JD_TITLES is not None:
+        # JD-driven role match: how well the candidate's title matches the JD's role terms.
+        hits = sum(1 for t in _JD_TITLES if t in title)
+        if hits >= 2:
+            return 1.0
+        if hits == 1:
+            return 0.65
+        return 0.15   # title doesn't match the JD's role at all
     is_eng = has_any(title, ENG_TITLE_TOKENS)
     is_nontech = has_any(title, NONTECH_TITLE_TOKENS)
     if is_eng and not is_nontech:
@@ -313,7 +325,7 @@ _JD_DEFAULTS = None
 def apply_jd_config(cfg):
     """Retarget the JD-specific knobs (core/support skills, preferred locations, experience
     band) from a parsed-JD config produced by parse_jd.parse_jd()."""
-    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND, _JD_DEFAULTS
+    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND, _JD_TITLES, _JD_DEFAULTS
     if _JD_DEFAULTS is None:
         _JD_DEFAULTS = (set(CORE_TERMS), set(SUPPORT_TERMS), set(INDIA_PREFERRED))
     if cfg.get("core_skills"):
@@ -322,6 +334,8 @@ def apply_jd_config(cfg):
         SUPPORT_TERMS = {s.lower() for s in cfg["support_skills"]}
     if cfg.get("preferred_locations"):
         INDIA_PREFERRED = {s.lower() for s in cfg["preferred_locations"]}
+    if cfg.get("relevant_titles"):
+        _JD_TITLES = {s.lower() for s in cfg["relevant_titles"]}
     lo, hi = cfg.get("experience_min"), cfg.get("experience_max")
     if lo and hi and hi > lo:
         _EXP_BAND = (float(lo), float(hi))
@@ -329,10 +343,11 @@ def apply_jd_config(cfg):
 
 def reset_jd_config():
     """Restore the built-in Senior AI Engineer defaults."""
-    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND
+    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND, _JD_TITLES
     if _JD_DEFAULTS is not None:
         CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED = (set(x) for x in _JD_DEFAULTS)
     _EXP_BAND = None
+    _JD_TITLES = None
 
 
 def score_eval_signal(c, all_text):
@@ -353,8 +368,9 @@ def _trap_factors(c, prof, hist, all_text):
     out = []
     title = (prof.get("current_title") or "").lower()
 
-    # Keyword-stuffer: non-tech current title but AI skills listed.
-    if has_any(title, NONTECH_TITLE_TOKENS) and not has_any(title, ENG_TITLE_TOKENS):
+    # Keyword-stuffer: non-tech current title but AI skills listed. Only for the built-in
+    # JD — when a custom JD is applied, JD-driven score_title already handles role fit.
+    if _JD_TITLES is None and has_any(title, NONTECH_TITLE_TOKENS) and not has_any(title, ENG_TITLE_TOKENS):
         out.append(("keyword_stuffer", 0.15, "non-technical current title with AI skills listed"))
 
     # Consulting/services-only career.
