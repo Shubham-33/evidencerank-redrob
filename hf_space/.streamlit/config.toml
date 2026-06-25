@@ -1,0 +1,11 @@
+# Streamlit Cloud reads this at the repo root.
+[server]
+# Raise the file-upload cap to 500 MB (default 200 MB) for larger candidate samples.
+maxUploadSize = 500
+
+[theme]
+primaryColor = "#4F46E5"
+backgroundColor = "#F6F7FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#1E2330"
+font = "sans serif"
