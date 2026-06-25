@@ -21,7 +21,7 @@ team_members:
 # Code and reproducibility
 # ============================================================================
 github_repo: "https://github.com/Shubham-33/evidencerank-redrob"
-sandbox_link: "https://evidencerank-redrob-owdbxcyvchuhvav5gxtvaf.streamlit.app/"
+sandbox_link: "https://evidencerank-redrob-dyblpprr79cibcoexhac5t.streamlit.app/"
 reproduce_command: "python execution/rank.py --candidates ./candidates.jsonl --out ./submission.csv"
 
 # ============================================================================
