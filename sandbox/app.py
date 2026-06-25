@@ -193,7 +193,9 @@ topk = col_a.slider("Top-K to show", 5, 100, 25)
 min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
 
 # ---- Job Description: feed any JD; NVIDIA parses it; the engine retargets ----
+import importlib
 import parse_jd  # noqa: E402  (execution/ is on sys.path)
+importlib.reload(parse_jd)  # pick up latest on Streamlit hot-reload (avoids stale-cache AttributeError)
 JD_FILE = os.path.join(HERE, "job_description.txt")
 default_jd = open(JD_FILE, encoding="utf-8").read() if os.path.exists(JD_FILE) else ""
 
@@ -289,7 +291,10 @@ for _, c, _f in shown:
         c, rank.evaluate_requirements(c, comp, honey), f2, honey)
 
 # ---- optional LLM re-rank of the shortlist (reads between the lines) --------
-if do_llm and nvidia_key and shown:
+if do_llm and nvidia_key and shown and not hasattr(parse_jd, "llm_rerank"):
+    st.warning("LLM re-rank isn't available in the running build yet — reboot the app "
+               "(Manage app → ⋮ → Reboot) to pick up the latest code.")
+elif do_llm and nvidia_key and shown:
     cand_list = [c for _, c, _ in shown]
     with st.spinner("🧠 LLM reading the shortlist between the lines…"):
         rr = parse_jd.llm_rerank(cand_list, jd_text, nvidia_key, top_n=min(10, len(cand_list)))
