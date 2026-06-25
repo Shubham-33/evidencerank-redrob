@@ -323,18 +323,49 @@ st.markdown(
     f'<div class="kpi pnk"><div class="lbl">Avg match</div><div class="num">{avg_match}%</div><div class="sub">of shown</div></div>'
     f'</div>', unsafe_allow_html=True)
 
-# ---- export CSV (built first so the download sits ABOVE the list) ----------
-csv_lines = ["candidate_id,rank,score,reasoning"]
+# ---- build submission rows (candidate_id, rank, score, reasoning) ----------
+import io
+import csv as _csv
+sub_rows = [("candidate_id", "rank", "score", "reasoning")]
 for i, c, final in shown:
-    reason = reasonings[c.get("candidate_id", id(c))].replace('"', '""')
-    csv_lines.append(f'{c.get("candidate_id","")},{i},{final},"{reason}"')
+    reason = reasonings[c.get("candidate_id", id(c))]
+    sub_rows.append((c.get("candidate_id", ""), i, round(float(final), 4), reason))
 
-# ---- header row: section title (left) + download button (right) ------------
-head_l, head_r = st.columns([3, 1])
+# CSV bytes (kept — the official validator requires a .csv)
+_csv_buf = io.StringIO()
+_csv.writer(_csv_buf, lineterminator="\n").writerows(sub_rows)
+csv_data = _csv_buf.getvalue()
+
+# XLSX bytes (spec: "submission file submitted as .xlsx or .csv")
+xlsx_data = None
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    _wb = Workbook(); _ws = _wb.active; _ws.title = "submission"
+    for _r in sub_rows:
+        _ws.append(list(_r))
+    for _cell in _ws[1]:
+        _cell.font = Font(bold=True)
+    for _col, _w in zip("ABCD", [18, 7, 10, 95]):
+        _ws.column_dimensions[_col].width = _w
+    _ws.freeze_panes = "A2"
+    _bio = io.BytesIO(); _wb.save(_bio); xlsx_data = _bio.getvalue()
+except Exception:
+    xlsx_data = None
+
+# ---- header row: section title (left) + download buttons (XLSX primary) -----
+head_l, head_x, head_c = st.columns([2, 1, 1])
 head_l.markdown('<div class="sec">Ranked candidates</div>', unsafe_allow_html=True)
-head_r.download_button("⬇  Download CSV", "\n".join(csv_lines) + "\n",
-                       file_name="submission_sample.csv", mime="text/csv",
-                       use_container_width=True, disabled=not shown)
+if xlsx_data is not None:
+    head_x.download_button(
+        "⬇  Download XLSX", xlsx_data, file_name="submission_sample.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True, disabled=not shown)
+else:
+    head_x.download_button("⬇  XLSX (n/a)", b"", use_container_width=True, disabled=True)
+head_c.download_button(
+    "⬇  Download CSV", csv_data, file_name="submission_sample.csv",
+    mime="text/csv", use_container_width=True, disabled=not shown)
 
 # ---- candidate cards -------------------------------------------------------
 if not shown:
