@@ -188,6 +188,42 @@ col_a, col_b = st.columns(2)
 topk = col_a.slider("Top-K to show", 5, 100, 25)
 min_pct = col_b.slider("Min match %", 0, 100, 0, help="Hide candidates below this match score")
 
+# ---- Job Description: feed any JD; NVIDIA parses it; the engine retargets ----
+import parse_jd  # noqa: E402  (execution/ is on sys.path)
+JD_FILE = os.path.join(HERE, "job_description.txt")
+default_jd = open(JD_FILE, encoding="utf-8").read() if os.path.exists(JD_FILE) else ""
+nvidia_key = (st.secrets.get("NVIDIA_API_KEY", None) if hasattr(st, "secrets") else None) \
+    or os.environ.get("NVIDIA_API_KEY")
+
+with st.expander("📋  Job Description — feed a JD to retarget the ranker (optional)"):
+    jd_text = st.text_area("Paste / edit the job description", value=default_jd, height=180)
+    st.caption(
+        ("🟢 NVIDIA key detected — JDs are parsed by the LLM (offline pre-compute)."
+         if nvidia_key else
+         "⚪ No NVIDIA key — JDs parse with the deterministic fallback. Add NVIDIA_API_KEY in "
+         "the app's *Secrets* (Streamlit) or environment for LLM parsing."))
+    cjd1, cjd2 = st.columns(2)
+    if cjd1.button("🧠  Parse JD & retarget", use_container_width=True):
+        with st.spinner("Parsing the JD…"):
+            st.session_state.jd_cfg = parse_jd.parse_jd(jd_text, api_key=nvidia_key)
+        st.toast(f"JD parsed ({st.session_state.jd_cfg.get('_source')})")
+    if cjd2.button("↩  Reset to built-in JD", use_container_width=True):
+        st.session_state.pop("jd_cfg", None)
+    cfg = st.session_state.get("jd_cfg")
+    if cfg:
+        st.success(f"Ranking against parsed JD · source: `{cfg.get('_source')}`")
+        st.markdown(
+            f"**Role:** {cfg.get('role','—')} &nbsp;·&nbsp; **Experience:** "
+            f"{cfg.get('experience_min')}–{cfg.get('experience_max')} yrs &nbsp;·&nbsp; "
+            f"**Locations:** {', '.join(cfg.get('preferred_locations') or ['any'])}")
+        st.markdown("**Core skills extracted:** " + ", ".join(cfg.get("core_skills") or []))
+
+# Retarget the engine from the parsed JD (or restore built-in defaults) every run.
+if st.session_state.get("jd_cfg"):
+    rank.apply_jd_config(st.session_state.jd_cfg)
+else:
+    rank.reset_jd_config()
+
 # Submit button — ranks the current source. The button click records WHICH source was
 # ranked, so a freshly uploaded file shows a "click to rank" prompt until you press it,
 # while the bundled sample demos immediately on first load.

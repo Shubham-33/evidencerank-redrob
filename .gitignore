@@ -13,6 +13,7 @@ submission.csv
 .env
 credentials.json
 token.json
+.streamlit/secrets.toml
 
 # OS / editor
 .DS_Store

@@ -6,6 +6,23 @@ CSV — the mandatory "working hosted environment" from submission_spec.md §10.
 The ranker itself ([`../execution/rank.py`](../execution/rank.py)) is **pure Python standard
 library**. Streamlit is only the demo UI and is **not** part of the ranking reproduction path.
 
+## Feed any Job Description (NVIDIA-powered, optional)
+
+The sandbox has a **📋 Job Description** panel: paste any JD and click **Parse JD & retarget**.
+[`../execution/parse_jd.py`](../execution/parse_jd.py) parses it into structured requirements
+(skills, experience band, locations, traps) and the ranker re-targets at that JD live. This is
+an **offline pre-compute** step — the ranking itself stays LLM-free, per the spec.
+
+- **With an NVIDIA key** → the JD is parsed by an LLM (deep "read between the lines").
+- **Without a key** → a deterministic stdlib fallback still extracts the essentials.
+
+Set the key so it's **never committed**:
+- **Streamlit Cloud:** app → **Settings → Secrets** → add `NVIDIA_API_KEY = "nvapi-..."`
+- **Locally:** `export NVIDIA_API_KEY=nvapi-...` before `streamlit run`
+
+Get a free key at build.nvidia.com. The official `submission.csv` is unaffected — it always
+uses the validated built-in Senior AI Engineer config.
+
 ## Run locally
 
 ```bash

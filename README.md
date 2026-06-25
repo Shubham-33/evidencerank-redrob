@@ -56,6 +56,7 @@ python execution/evaluate.py --candidates ./candidates.jsonl --gold
 | [`execution/rank.py`](execution/rank.py) | The ranker. Stdlib-only, streaming, deterministic. **This is the reproduce target.** |
 | [`execution/requirements.json`](execution/requirements.json) | Declarative JD model (each requirement quotes the JD). `rank.py --dump-requirements` regenerates it. |
 | [`execution/evaluate.py`](execution/evaluate.py) | Offline eval harness: planted cases, proxy metrics, ablations, gold-set scoring. |
+| [`execution/parse_jd.py`](execution/parse_jd.py) | **Offline** JD parser (NVIDIA free API, stdlib) → structured requirements, so the engine can retarget at *any* JD. Pre-compute only; ranking stays LLM-free. |
 | [`execution/gold_labels.json`](execution/gold_labels.json) | 60 hand-labeled relevance tiers — a less-correlated yardstick. |
 | [`PLAN.md`](PLAN.md) | Full architecture + every eval-gated decision (including what we tested and rejected). |
 | [`directives/`](directives/) | Living design notes / SOPs with the learnings behind each component. |

@@ -267,17 +267,30 @@ def score_career(hist, summary):
     return best
 
 
+# Optional experience-band override from a parsed JD (set via apply_jd_config). None => the
+# built-in Senior AI Engineer behaviour, so the official submission path is byte-identical.
+_EXP_BAND = None
+
+
 def score_experience(yoe):
-    # Peak 6-8 yrs, full credit 5-9, soft decay outside.
-    if 6 <= yoe <= 8:
-        return 1.0
-    if 5 <= yoe <= 9:
-        return 0.85
-    if 4 <= yoe < 5 or 9 < yoe <= 11:
-        return 0.6
-    if 3 <= yoe < 4 or 11 < yoe <= 13:
-        return 0.35
-    return 0.15
+    if _EXP_BAND is None:
+        # Default: peak 6-8 yrs, full credit 5-9, soft decay outside.
+        if 6 <= yoe <= 8:
+            return 1.0
+        if 5 <= yoe <= 9:
+            return 0.85
+        if 4 <= yoe < 5 or 9 < yoe <= 11:
+            return 0.6
+        if 3 <= yoe < 4 or 11 < yoe <= 13:
+            return 0.35
+        return 0.15
+    # JD-driven band: full credit inside [lo,hi] (peak in the middle), soft decay outside.
+    lo, hi = _EXP_BAND
+    mid, half = (lo + hi) / 2.0, max((hi - lo) / 2.0, 1.0)
+    if lo <= yoe <= hi:
+        return 0.85 + 0.15 * (1 - abs(yoe - mid) / half)
+    dist = (lo - yoe) if yoe < lo else (yoe - hi)
+    return 0.6 if dist <= 2 else 0.35 if dist <= 4 else 0.15
 
 
 def score_location(prof, sig):
@@ -289,6 +302,37 @@ def score_location(prof, sig):
         return 0.8 if sig.get("willing_to_relocate") else 0.6
     # Outside India — JD says case-by-case, no visa sponsorship.
     return 0.5 if sig.get("willing_to_relocate") else 0.2
+
+
+# --- optional JD-config override (for arbitrary JDs; see parse_jd.py) --------
+# The official submission NEVER calls apply_jd_config, so its scoring is unchanged. The
+# sandbox/CLI call it to retarget the same engine at a different JD's requirements.
+_JD_DEFAULTS = None
+
+
+def apply_jd_config(cfg):
+    """Retarget the JD-specific knobs (core/support skills, preferred locations, experience
+    band) from a parsed-JD config produced by parse_jd.parse_jd()."""
+    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND, _JD_DEFAULTS
+    if _JD_DEFAULTS is None:
+        _JD_DEFAULTS = (set(CORE_TERMS), set(SUPPORT_TERMS), set(INDIA_PREFERRED))
+    if cfg.get("core_skills"):
+        CORE_TERMS = {s.lower() for s in cfg["core_skills"]}
+    if cfg.get("support_skills"):
+        SUPPORT_TERMS = {s.lower() for s in cfg["support_skills"]}
+    if cfg.get("preferred_locations"):
+        INDIA_PREFERRED = {s.lower() for s in cfg["preferred_locations"]}
+    lo, hi = cfg.get("experience_min"), cfg.get("experience_max")
+    if lo and hi and hi > lo:
+        _EXP_BAND = (float(lo), float(hi))
+
+
+def reset_jd_config():
+    """Restore the built-in Senior AI Engineer defaults."""
+    global CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED, _EXP_BAND
+    if _JD_DEFAULTS is not None:
+        CORE_TERMS, SUPPORT_TERMS, INDIA_PREFERRED = (set(x) for x in _JD_DEFAULTS)
+    _EXP_BAND = None
 
 
 def score_eval_signal(c, all_text):
