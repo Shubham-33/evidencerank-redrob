@@ -1,0 +1,46 @@
+name: Deploy sandbox to HuggingFace Space
+
+# Auto-sync the sandbox to https://huggingface.co/spaces/smittalsm/evidencerank on every
+# push to main. Requires a repo secret HF_TOKEN (a HuggingFace *Write* access token).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "hf_space/**"
+      - "execution/rank.py"
+      - "execution/parse_jd.py"
+      - "sandbox/sample_candidates.jsonl"
+      - "sandbox/job_description.txt"
+      - ".github/workflows/deploy-hf-space.yml"
+  workflow_dispatch: {}   # also runnable manually from the Actions tab
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh source copies into hf_space (single source of truth)
+        run: |
+          cp execution/rank.py            hf_space/rank.py
+          cp execution/parse_jd.py        hf_space/parse_jd.py
+          cp sandbox/sample_candidates.jsonl hf_space/sample_candidates.jsonl
+          cp sandbox/job_description.txt  hf_space/job_description.txt
+
+      - name: Push hf_space/ to the HuggingFace Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN secret is missing. Add it in repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          cd hf_space
+          rm -rf .git __pycache__
+          git init -b main
+          git config user.email "actions@github.com"
+          git config user.name  "GitHub Actions"
+          git add -A
+          git commit -m "Sync from GitHub @ ${GITHUB_SHA::7}"
+          git push --force "https://smittalsm:${HF_TOKEN}@huggingface.co/spaces/smittalsm/evidencerank" main
+          echo "Deployed to https://huggingface.co/spaces/smittalsm/evidencerank"
