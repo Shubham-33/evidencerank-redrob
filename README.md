@@ -32,6 +32,23 @@ This streams the 100K-candidate file, scores every candidate, and writes the spe
 top-100 CSV (`candidate_id,rank,score,reasoning`). Runtime: ~12s, well under the 5-minute
 budget; peak memory well under 16 GB; no GPU; no network access at any point.
 
+## Run the sandbox (self-contained — Docker, no hosting needed)
+
+Per submission_spec.md §10.5, this `docker run` recipe builds and runs the interactive
+sandbox unmodified — an alternative to a hosted link:
+
+```bash
+git clone https://github.com/Shubham-33/evidencerank-redrob
+cd evidencerank-redrob/hf_space
+docker build -t evidencerank .
+docker run -p 7860:7860 evidencerank
+# then open http://localhost:7860
+```
+
+Upload a candidate sample (≤100, JSONL or JSON array) or use the bundled one; optionally paste
+a JD + any OpenAI-compatible LLM key to retarget the ranker. (Also deployable to HuggingFace
+Spaces / Streamlit Cloud — the same `hf_space/` folder.)
+
 ## Validate before submitting
 
 ```bash
