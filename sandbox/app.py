@@ -16,7 +16,11 @@ import sys
 import streamlit as st
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "execution"))
+# Works both in sandbox/ (rank.py lives in ../execution) and in the flat HF Space (siblings).
+for _p in (os.path.join(HERE, "..", "execution"), HERE):
+    if os.path.exists(os.path.join(_p, "rank.py")):
+        sys.path.insert(0, _p)
+        break
 import rank  # noqa: E402  (path set above)
 
 st.set_page_config(page_title="EvidenceRank", page_icon="🎯", layout="wide",
@@ -222,6 +226,12 @@ with st.expander("📋  Job Description — feed a JD to retarget the ranker (op
         st.toast(f"JD parsed ({st.session_state.jd_cfg.get('_source')})")
     if cjd2.button("↩  Reset to built-in JD", use_container_width=True):
         st.session_state.pop("jd_cfg", None)
+    do_llm = st.checkbox(
+        "🧠 LLM re-rank the shortlist — *read between the lines*",
+        help="After the fast rule-based ranker filters the pool, the NVIDIA LLM reads the top "
+             "candidates' actual described experience vs the JD and re-ranks them — crediting "
+             "real experience even without the exact keywords. Cost-safe: only the shortlist "
+             "(~10), never the full 100k. Needs a key.")
     cfg = st.session_state.get("jd_cfg")
     if cfg:
         st.success(f"Ranking against parsed JD · source: `{cfg.get('_source')}`")
@@ -277,6 +287,28 @@ for _, c, _f in shown:
     f2, comp, honey = rank.score_candidate(c)
     reasonings[c.get("candidate_id", id(c))] = rank.build_reasoning(
         c, rank.evaluate_requirements(c, comp, honey), f2, honey)
+
+# ---- optional LLM re-rank of the shortlist (reads between the lines) --------
+if do_llm and nvidia_key and shown:
+    cand_list = [c for _, c, _ in shown]
+    with st.spinner("🧠 LLM reading the shortlist between the lines…"):
+        rr = parse_jd.llm_rerank(cand_list, jd_text, nvidia_key, top_n=min(10, len(cand_list)))
+    fits = {}
+    for r in rr:
+        cid = r["candidate"].get("candidate_id", id(r["candidate"]))
+        if r["fit"] is not None:
+            fits[cid] = r["fit"]
+            reasonings[cid] = "🧠 " + (r["reason"] or "")
+    if fits:
+        reordered = sorted(shown, key=lambda t: (
+            t[1].get("candidate_id", id(t[1])) in fits,
+            fits.get(t[1].get("candidate_id", id(t[1])), 0)), reverse=True)
+        shown = [(i + 1, c, (fits[c.get("candidate_id", id(c))] / 100.0
+                             if c.get("candidate_id", id(c)) in fits else f))
+                 for i, (_, c, f) in enumerate(reordered)]
+        st.caption(f"🧠 Top {len(fits)} re-ranked by the LLM (read between the lines).")
+    elif do_llm:
+        st.caption("⚠️ LLM re-rank unavailable (no key or API error) — showing rule-based order.")
 
 avg_match = round(sum(min(f, 1.0) * 100 for _, _, f in shown) / len(shown)) if shown else 0
 

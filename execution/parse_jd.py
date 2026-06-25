@@ -59,12 +59,13 @@ Job description:
 """
 
 
-def call_nvidia(jd_text, api_key, model=DEFAULT_MODEL, timeout=60):
+def chat(prompt, api_key, model=DEFAULT_MODEL, timeout=60, max_tokens=512, temperature=0.2):
+    """Generic NVIDIA chat-completion call. Returns the message content string."""
     body = json.dumps({
         "model": model,
-        "messages": [{"role": "user", "content": PROMPT.format(jd=jd_text[:12000])}],
-        "temperature": 0.2,
-        "max_tokens": 1024,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
     }).encode("utf-8")
     req = urllib.request.Request(NVIDIA_URL, data=body, method="POST", headers={
         "Authorization": f"Bearer {api_key}",
@@ -75,6 +76,60 @@ def call_nvidia(jd_text, api_key, model=DEFAULT_MODEL, timeout=60):
     with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     return data["choices"][0]["message"]["content"]
+
+
+def call_nvidia(jd_text, api_key, model=DEFAULT_MODEL):
+    return chat(PROMPT.format(jd=jd_text[:12000]), api_key, model, max_tokens=1024)
+
+
+# --- LLM re-rank: read a SHORTLIST between the lines -------------------------
+RERANK_PROMPT = """You are an expert technical recruiter. READ BETWEEN THE LINES: credit a
+candidate whose described experience matches the role even if they don't list the exact
+keywords — e.g. someone who "built an end-to-end system that orders items by predicted
+relevance" clearly has recommendation/ranking experience even without those words. Discount
+keyword-stuffing with no supporting experience, and down-weight candidates who aren't
+genuinely available (stale activity, very low recruiter response).
+
+JOB DESCRIPTION:
+{jd}
+
+CANDIDATE PROFILE:
+{cand}
+
+Return ONLY JSON: {{"fit": <integer 0-100>, "reason": "<one specific sentence grounded in the profile>"}}"""
+
+
+def candidate_brief(c):
+    """Compact, grounded profile text for the LLM to reason over."""
+    p = c.get("profile", {}) or {}
+    sig = c.get("redrob_signals", {}) or {}
+    lines = [f"Title: {p.get('current_title','')}",
+             f"Experience: {p.get('years_of_experience','')} yrs | Location: {p.get('location','')}",
+             f"Summary: {(p.get('summary') or '')[:450]}"]
+    for j in (c.get("career_history") or [])[:3]:
+        lines.append(f"- {j.get('title','')} @ {j.get('company','')} "
+                     f"({j.get('industry','')}): {(j.get('description') or '')[:260]}")
+    lines.append("Skills: " + ", ".join((s.get("name") or "") for s in (c.get("skills") or [])[:12]))
+    lines.append(f"Signals: last_active={sig.get('last_active_date')}, "
+                 f"recruiter_response_rate={sig.get('recruiter_response_rate')}, "
+                 f"open_to_work={sig.get('open_to_work_flag')}")
+    return "\n".join(lines)
+
+
+def llm_rerank(candidates, jd_text, api_key, model=DEFAULT_MODEL, top_n=12):
+    """Re-score the top-N shortlist by reading each profile between the lines.
+    Returns a list of {candidate, fit (0-100 or None), reason}. Falls back to None on error."""
+    out = []
+    for c in candidates[:top_n]:
+        try:
+            j = extract_json(chat(
+                RERANK_PROMPT.format(jd=jd_text[:4000], cand=candidate_brief(c)),
+                api_key, model, max_tokens=200))
+            out.append({"candidate": c, "fit": float(j.get("fit", 0)),
+                        "reason": str(j.get("reason", ""))})
+        except Exception:  # noqa: BLE001 — keep the candidate at its rule-based spot on failure
+            out.append({"candidate": c, "fit": None, "reason": None})
+    return out
 
 
 def extract_json(content):
